@@ -1,0 +1,55 @@
+name: Publicar Site Estático no GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar arquivos estáticos
+        shell: bash
+        run: |
+          rm -rf .mako-pages-output
+          mkdir .mako-pages-output
+          if [ -f "index.html" ]; then
+            cp index.html .mako-pages-output/index.html
+            [ -d "assets" ] && cp -R assets .mako-pages-output/assets
+            [ -d "public" ] && cp -R public/. .mako-pages-output/
+          elif [ -f "public/index.html" ]; then
+            cp -R public/. .mako-pages-output/
+          else
+            echo "Nenhum index.html estático seguro foi encontrado" >&2
+            exit 1
+          fi
+          touch .mako-pages-output/.nojekyll
+          cp .mako-pages-output/index.html .mako-pages-output/404.html
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empacotar site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.mako-pages-output'
+
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
