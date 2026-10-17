@@ -1,6 +1,7 @@
 from datetime import datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 ERROR_LOG = Path("server-errors.log")
@@ -19,6 +20,14 @@ class CrossOriginIsolatedHandler(SimpleHTTPRequestHandler):
                 timestamp = datetime.now().isoformat(timespec="seconds")
                 log.write(f"{timestamp}\t{code}\t{self.command}\t{self.path}\n")
         super().send_error(code, message, explain)
+
+    def translate_path(self, path):
+        parsed_path = urlsplit(path).path
+        prefix = "/games/the-simpsons-hit-and-run/"
+        if parsed_path.startswith(prefix):
+            suffix = parsed_path[len(prefix):]
+            path = f"/{suffix}"
+        return super().translate_path(path)
 
     def end_headers(self):
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
